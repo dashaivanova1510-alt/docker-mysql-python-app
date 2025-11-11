@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  # Сервіс бази даних MySQL
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    env_file:
+      - .env # Завантажуємо змінні оточення з файлу .env
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql # Створюємо зовнішнє сховище для даних
+    networks:
+      - app-network
+
+  # Сервіс phpMyAdmin для керування БД
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin_ui
+    restart: always
+    depends_on:
+      - db # Запускати тільки після старту сервіса 'db'
+    ports:
+      - "8080:80" # Відкриваємо доступ до phpMyAdmin на порту 8080
+    environment:
+      PMA_HOST: db # Вказуємо хост для підключення - ім'я сервіса 'db'
+      PMA_PORT: 3306
+    networks:
+      - app-network
+
+  # Сервіс із застосунком на Python
+  app:
+    build: ./app # Вказуємо шлях до Dockerfile для збірки образу
+    container_name: python_app
+    restart: on-failure # Перезапускати, якщо виникла помилка
+    depends_on:
+      - db # Запускати тільки після старту сервіса 'db'
+    env_file:
+      - .env # Також передаємо змінні оточення
+    networks:
+      - app-network
+
+# Описуємо мережу для зв'язку контейнерів
+networks:
+  app-network:
+    driver: bridge
+
+# Описуємо зовнішнє сховище (volume)
+volumes:
+  db_data:
+    driver: local
